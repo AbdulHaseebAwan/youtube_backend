@@ -24,7 +24,7 @@ const registerUser = asyncHandler(async(req, res)=>{
              throw new ApiError(400, "All field are refquired")
          }
 
-      const existedUser =   User.findOne({
+      const existedUser =  await User.findOne({
             $or : [{email}, {username}]
          })
 
@@ -32,31 +32,37 @@ const registerUser = asyncHandler(async(req, res)=>{
             throw new ApiError(409, "useranme or email already exist")
          }
 
-       const avatorLocalPath =  req.files?.avator[0]?.path;
-      const coverImageLocalPath = req.files?.coverImage[0]?.path;
-
-      if(!avatorLocalPath){
-        throw new ApiError(400, "Avator is compulasory")
+       const avatarLocalPath =  req.files?.avatar[0]?.path;
+      // const coverImageLocalPath = req.files?.coverImage[0]?.path;
+      let coverImageLocalPath;
+      if(req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0){
+         coverImageLocalPath = req.files.coverImage[0].path
       }
 
-      const avator = await uploadCloudinary(avatorLocalPath);
+
+      if(!avatarLocalPath){
+        throw new ApiError(400, "Avatar is compulasory")
+      }
+
+      const avatar = await uploadCloudinary(avatarLocalPath);
      const coverImage = await uploadCloudinary(coverImageLocalPath)
 
-     if(!avator){
-        throw new ApiError(400,  "Avaor is needed")
+     if(!avatar){
+        throw new ApiError(400,  "Avatar is needed")
      }
 
      const user = await User.create(
         {
             fullName,
             username: username.toLowerCase(),
-            passwords,
+            password,
             email,
-            avator: avator.url,
+            avatar: avatar.url,
             coverImage: coverImage?.url || "",
         }
      )
-    const createdUser = await User.findById(user(_id)).select("-passwords -refereshToken");
+  const createdUser = await User.findById(user._id).select("-password -refereshToken");
+
 
     if(!createdUser){
         throw new ApiError(500, "founding Error while registerign the user");
