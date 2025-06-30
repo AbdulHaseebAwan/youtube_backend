@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 
+
 const app = express();
 
 //custiom API responces to handle
@@ -12,5 +13,12 @@ app.use(express.static("public"));
 app.use(cookieParser())
 
 
+//import routes
+import userRouter from './routes/user.routes.js'
+
+
+//routes decalaration
+
+app.use('/api/v1/users', userRouter)
 
 export default app
