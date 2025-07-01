@@ -71,11 +71,18 @@ UserSchema.pre("save",async function(next){
 
 });
 
-UserSchema.methods.isPasswordCorrect = async function(passwords){
+// UserSchema.methods.isPasswordCorrect = async function(password){
 
-   return await bcrypt.compare(passwords, this.passwords)
+//    return await bcrypt.compare(password, this.password)
 
-};
+// };
+UserSchema.methods.isPasswordCorrect = async function (password) {
+  if (typeof password !== "string" || typeof this.password !== "string") {
+    throw new Error("Password or hash must be a string");
+  }
+  return await bcrypt.compare(password, this.password);
+}
+
 
 UserSchema.methods.generateAccessToken = function(){
   return  jwt.sign(
