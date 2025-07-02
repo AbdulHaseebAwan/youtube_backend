@@ -154,9 +154,9 @@ const logOutUser = asyncHandler(async (req , res) => {
  await  User.findByIdAndUpdate(
       req.user._id,
       {
-         $set: 
+         $unset: 
          {
-            refreshToken: undefined
+            refreshToken: 1
          },
          
       },
@@ -222,6 +222,9 @@ const refreshAccessToken = asyncHandler(async (req, res)=> {
 
 const changeCurrentPassword = asyncHandler(async (req, res)=>{
    const {oldPassword, newPassword} = req.body
+   if(!oldPassword && !newPassword){
+      throw new ApiError(400, "old password and new password are required")
+   }
   const user =  await  User.findById( req.user?._id)
  const isPasswordCorrect = await user.isPasswordCorrect(oldPassword)
 
@@ -237,7 +240,19 @@ const changeCurrentPassword = asyncHandler(async (req, res)=>{
 })
 
 const getCurrentUser = asyncHandler(async(req, res)=>{
-   return res.status(200).json(200, req.user, "current user fetched successfully")
+   const {username, email} = req.body
+   if(!username){
+      throw new ApiError(400, "user name and email is required")
+   }
+   const user = await User.findOne({
+      $or: [{username}, {email}]
+   })
+   if(!user){
+      throw new ApiError(404, "user doesnot exist")
+   }
+   return res.status(200).json(
+      new ApiResponse(200, user, "user fetched successfully")
+   )
 })
 
 const updateAccountDetails = asyncHandler(async (req , res)=>{
@@ -263,7 +278,7 @@ const userAvatarUpdate = asyncHandler(async(req, res)=>{
   if (!localFilePath) {
    throw new ApiError(400, 'avatar is missing')
   }
-  const avatar = await uploadCloudinary(avatarLocalPath)
+  const avatar = await uploadCloudinary(localFilePath)
   if(!avatar.url){
    throw new ApiError(400, "error while uploading an avatar")
 }
@@ -304,10 +319,10 @@ const getUserChannelProfile = asyncHandler(async(req, res)=>{
    if(!username?.trim()){
       throw new ApiError(400, "username is missing")
    }
-  const channel = User.aggregate([
+  const channel =await User.aggregate([
    {
    $match:{
-      username: username?.toLowerCase()
+      username: username
    },
   },
   {
@@ -336,7 +351,7 @@ const getUserChannelProfile = asyncHandler(async(req, res)=>{
          $size: "$subscribers"
       },
        channelSubscribeToCount : {
-         $size: "subscibedTo"
+         $size: "$subscibedTo"
        },
        isSubscribed: {
          $cond: {
@@ -366,6 +381,9 @@ const getUserChannelProfile = asyncHandler(async(req, res)=>{
   }
 
 ])
+console.log("🔍 Username from URL:", req.params.username);
+console.log("🔐 Authenticated User:", req.user);
+console.log("📦 Channel Result:", channel);
 
 if(!channel?.length){
    throw new ApiError(404, "channel does not exist")
@@ -379,7 +397,7 @@ return res.status(200).json(
 })
 
 const getWatchHistory = asyncHandler(async (req, res)=>{
-   const user = User.aggregate([
+   const user =await User.aggregate([
       {
          $match: {
             _id: new mongoose.Types.ObjectId(req.user._id)
@@ -394,7 +412,7 @@ const getWatchHistory = asyncHandler(async (req, res)=>{
             pipeline: [
                {
                   $lookup: {
-                     form: "users",
+                     from: "users",
                      localField: "owner",
                      foreignField: "_id",
                      as: "owner",
